@@ -1,0 +1,20 @@
+{
+  "state_dir": "/opt/noaa_alerts/state",
+  "user_agent": "icad_nws_alerts (root@icarey.net)",
+  "zones": [
+    {
+      "zone_id": "SCC063",
+      "label": "Lexington County, SC",
+      "webhooks": [
+        "https://discordapp.com/api/webhooks/xxxxxxxx/yyyyyyyy"
+      ]
+    },
+    {
+      "zone_id": "NYC015",
+      "label": "Chemung Country, NY",
+      "webhooks": [
+        "https://discordapp.com/api/webhooks/aaaaaaaa/bbbbbbbb"
+      ]
+    }
+  ]
+}
