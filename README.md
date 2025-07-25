@@ -290,4 +290,3 @@ MIT License
 
 - NWS `api.weather.gov`
 - Discord Webhooks
-- Your `event_codes` table for level/color/icon mapping
