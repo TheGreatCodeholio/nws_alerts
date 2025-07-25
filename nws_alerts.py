@@ -59,18 +59,24 @@ def get_log_level(name: str | None) -> int:
 
 def resolve_paths() -> tuple[Path, Path, Path]:
     """
-    Returns (cfg_path, log_dir, state_dir_defaults_base)
+    Returns (cfg_path, log_dir, state_dir), all rooted at the script's directory
+    unless overridden via env vars.
 
-    Defaults:
-      ./etc/config.json for config
-      ./log            for logs
-      ./state          for state (unless overridden inside config)
+    Layout (default):
+      <repo-root>/etc/config.json
+      <repo-root>/var/log/
+      <repo-root>/var/state/
     """
     base = Path(__file__).resolve().parent
-    cfg_path  = Path(os.environ.get("NOAA_ALERTS_CONFIG", base / "etc" / "config.json"))
-    log_dir   = Path(os.environ.get("NOAA_ALERTS_LOGDIR", base / "log"))
-    state_dir_default_base = base / "state"
-    return cfg_path, log_dir, state_dir_default_base
+
+    cfg_path  = Path(os.environ.get("NOAA_ALERTS_CONFIG",  base / "etc" / "config.json"))
+
+    # Single var/ root, then split into log/ and state/
+    var_dir   = Path(os.environ.get("NOAA_ALERTS_VARDIR",  base / "var"))
+    log_dir   = Path(os.environ.get("NOAA_ALERTS_LOGDIR",  var_dir / "log"))
+    state_dir = Path(os.environ.get("NOAA_ALERTS_STATEDIR", var_dir / "state"))
+
+    return cfg_path, log_dir, state_dir
 
 # ─────────────────────────  LOGGING  ─────────────────────────
 def setup_logging(
@@ -109,11 +115,11 @@ def setup_logging(
 
 # ─────────────────────────  CONFIG  ─────────────────────────
 
-def load_config(path: Path, default_state_dir: Path) -> Dict[str, Any]:
-    if not path.exists():
-        raise SystemExit(f"Config file not found: {path}")
+def load_config(config_path: Path, state_dir: Path) -> Dict[str, Any]:
+    if not config_path.exists():
+        raise SystemExit(f"Config file not found: {config_path}")
 
-    with path.open("r", encoding="utf-8") as f:
+    with config_path.open("r", encoding="utf-8") as f:
         cfg = json.load(f)
 
     # required
@@ -123,7 +129,7 @@ def load_config(path: Path, default_state_dir: Path) -> Dict[str, Any]:
 
     # defaults
     cfg.setdefault("user_agent", f"{APP_NAME}/{__version__} (noaa-alerts@icaddispatch.com)")
-    cfg.setdefault("state_dir", str(default_state_dir))
+    cfg.setdefault("state_dir", str(state_dir))
     cfg.setdefault("log_level", "INFO")
 
     # ensure state dir exists

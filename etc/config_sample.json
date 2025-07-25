@@ -1,5 +1,4 @@
 {
-  "state_dir": "/opt/noaa_alerts/state",
   "user_agent": "icad_nws_alerts (root@icarey.net)",
   "zones": [
     {
