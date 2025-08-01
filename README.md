@@ -118,7 +118,6 @@ Example:
 **Notes**
 
 - `zones[].webhooks`: The script currently uses the **first** webhook. (You can fan out yourself if desired.)
-- The script **ignores** any `state_dir` in the JSON; it always uses `<repo>/var/state` unless overridden by env vars.
 
 ---
 
