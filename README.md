@@ -94,24 +94,24 @@ Example:
 
 ```json
 {
-"user_agent": "icad_nws_alerts (ops@example.com)",
-"log_level": "INFO",
-"zones": [
-{
-"zone_id": "SCC063",
-"label": "Lexington County, SC",
-"webhooks": [
-"https://discord.com/api/webhooks/xxx/yyy"
-]
-},
-{
-"zone_id": "NYC015",
-"label": "Chemung County, NY",
-"webhooks": [
-"https://discord.com/api/webhooks/aaa/bbb"
-]
-}
-]
+  "user_agent": "icad_nws_alerts (ops@example.com)",
+  "log_level": "INFO",
+  "zones": [
+    {
+      "zone_id": "SCC063",
+      "label": "Lexington County, SC",
+      "webhooks": [
+        "https://discord.com/api/webhooks/xxx/yyy"
+      ]
+    },
+    {
+      "zone_id": "NYC015",
+      "label": "Chemung County, NY",
+      "webhooks": [
+        "https://discord.com/api/webhooks/aaa/bbb"
+      ]
+    }
+  ]
 }
 ```
 
