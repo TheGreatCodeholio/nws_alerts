@@ -72,7 +72,8 @@ You need **UGC** zone IDs (e.g., `SCC063`) for the `zone` query parameter.
 List all **county** zones for a state (example: South Carolina):
 
 ```bash
-curl -s "https://api.weather.gov/zones?type=county&area=SC" | jq '.features[].id'
+curl -s "https://api.weather.gov/zones?type=county&area=SC" \
+| jq -r '.features[] | "\(.properties.id)\t\(.properties.name)"'
 ```
 
 Inspect one zone:
