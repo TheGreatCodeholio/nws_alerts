@@ -1,6 +1,30 @@
 {
   "user_agent": "icad_nws_alerts (root@icarey.net)",
-  "mapbox_token": "sk.ABCDEF1234567890",
+  "map": {
+    "enabled": true,
+    "filename": "alert.png",
+    "optimize": true,
+
+    "width": 800,
+    "height": 500,
+    "zones_mode": "affected",
+    "show_title_block": false,
+    "label": null,
+
+    "tile_template": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    "attribution": "© OpenStreetMap contributors",
+
+    "cache_dir": "var/cache_noaa_maps",
+    "min_zoom": 3,
+    "max_zoom": 14,
+    "margin_frac": 0.12,
+    "max_tiles": 64,
+    "tile_delay_s": 0.0,
+    "request_timeout_s": 30,
+    "zone_json_ttl_s": 86400,
+    "zone_poly_ttl_s": 86400,
+    "tile_ttl_s": 604800
+  },
   "zones": [
     {
       "zone_id": "SCC063",
@@ -14,7 +38,13 @@
       "label": "Chemung Country, NY",
       "webhooks": [
         "https://discordapp.com/api/webhooks/aaaaaaaa/bbbbbbbb"
-      ]
+      ],
+      "map": {
+        "width": 900,
+        "height": 650,
+        "show_title_block": true,
+        "filename": "nyc015.png"
+      }
     }
   ]
 }
