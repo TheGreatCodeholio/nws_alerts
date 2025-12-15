@@ -1,5 +1,7 @@
 {
   "user_agent": "icad_nws_alerts (root@icarey.net)",
+  "delete_after_hours": 24,
+  "prune_after_days": 7,
   "map": {
     "enabled": true,
     "filename": "alert.png",

@@ -138,6 +138,9 @@ def load_config(config_path: Path, state_dir: Path) -> Dict[str, Any]:
     cfg.setdefault("state_dir", str(state_dir))
     cfg.setdefault("log_level", "INFO")
 
+    cfg.setdefault("delete_after_hours", 24)  # delete Discord msg X hours after cleared/expired
+    cfg.setdefault("prune_after_days", 7)     # prune state rows X days after expires_at
+
     cfg.setdefault("map", {})
     m = cfg["map"]
     m.setdefault("enabled", True)
@@ -206,15 +209,24 @@ def save_state(cfg: Dict[str, Any], zone_id: str, state: Dict[str, Any]) -> None
         json.dump(state, f, indent=2, sort_keys=True)
     os.replace(tmp_path, path)
 
-def prune_state(state: Dict[str, Any], now: datetime) -> None:
+def prune_state(state: Dict[str, Any], now: datetime, *, prune_after_days: int = 7) -> None:
     """
-    Remove any chain whose expires_at is >7 days in the past.
+    Remove any chain whose expires_at is > prune_after_days in the past.
     """
-    cutoff = (now - timedelta(days=7)).isoformat()
-    alerts = state.get("alerts", {})
-    doomed = [cid for cid, r in alerts.items() if r.get("expires_at", "") < cutoff]
+    cutoff = now - timedelta(days=int(prune_after_days))
+    alerts = state.get("alerts", {}) or {}
+
+    doomed = []
+    for cid, row in alerts.items():
+        exp = parse_iso(row.get("expires_at"))
+        if exp and exp < cutoff:
+            doomed.append(cid)
+
     for cid in doomed:
         del alerts[cid]
+
+    if doomed:
+        log.info("Pruned %d old state row(s)", len(doomed))
 
 # ───────────────────────  NOAA API helpers  ───────────────────────
 
@@ -443,6 +455,22 @@ def discord_edit_embed(msg_id: str, embed: dict, webhook_url: str, *, png_bytes:
     files = {"files[0]": (filename, png_bytes, "image/png")}
     r = requests.patch(url, data={"payload_json": json.dumps(payload)}, files=files, timeout=30)
     r.raise_for_status()
+
+def discord_delete_message(msg_id: str, webhook_url: str) -> bool:
+    """
+    Delete a webhook message.
+    Returns True if deleted, False if already gone (404).
+    """
+    url_base = webhook_url.split("?", 1)[0]
+    url = f"{url_base}/messages/{msg_id}"
+
+    r = requests.delete(url, timeout=15)
+    if r.status_code in (200, 204):
+        return True
+    if r.status_code == 404:
+        return False
+    r.raise_for_status()
+    return True
 
 def best_event_code(props: dict) -> str | None:
     """
@@ -687,12 +715,49 @@ def run_for_zone(cfg: Dict[str, Any], zone: Dict[str, Any], renderer: NOAAAlertM
                 row["cap_id"]     = cap_id
                 row["status"]     = "cleared" if cleared else "updated"
                 row["expires_at"] = derive_expires(props)
+
+                if row["status"] == "cleared" and not row.get("cleared_at"):
+                    row["cleared_at"] = now.isoformat()
+
                 log.info("[%s] Edited %s (%s)", zone_id, cid, row["status"])
 
         except Exception as e:
             log.exception("[%s] Discord failure for %s: %s", zone_id, cid, e)
 
-    prune_state(state, now)
+    # ── Cleanup pass: auto-clear expired rows + delete Discord msg after delay ──
+    delete_after_hours = int(zone.get("delete_after_hours", cfg.get("delete_after_hours", 24)))
+    delete_after_s = delete_after_hours * 3600
+
+    for cid, row in cur.items():
+        exp = parse_iso(row.get("expires_at"))
+        if not exp:
+            continue
+
+        status = (row.get("status") or "").lower()
+
+        # If the alert is no longer returned by NWS (expired) we may never "edit" it again.
+        # Auto-mark it cleared once expired so deletion countdown can begin.
+        if status not in ("cleared", "deleted") and now >= exp:
+            row["status"] = "cleared"
+            row.setdefault("cleared_at", exp.isoformat())
+            log.info("[%s] Auto-cleared %s (expired at %s)", zone_id, cid, row["cleared_at"])
+
+        # If cleared long enough, delete the Discord message
+        if (row.get("status") == "cleared") and row.get("discord_id") and not row.get("deleted_at"):
+            cleared_at = parse_iso(row.get("cleared_at")) or exp
+            if cleared_at and (now - cleared_at).total_seconds() >= delete_after_s:
+                try:
+                    deleted = discord_delete_message(row["discord_id"], webhooks[0])
+                    row["deleted_at"] = now.isoformat()
+                    row["status"] = "deleted"
+                    log.info(
+                        "[%s] Deleted Discord message for %s (msg=%s, existed=%s)",
+                        zone_id, cid, row["discord_id"], deleted
+                    )
+                except Exception as e:
+                    log.exception("[%s] Failed deleting Discord msg for %s: %s", zone_id, cid, e)
+
+    prune_state(state, now, prune_after_days=int(cfg.get("prune_after_days", 7)))
     state["alerts"] = cur
     save_state(cfg, zone_id, state)
 
